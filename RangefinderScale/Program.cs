@@ -16,12 +16,12 @@ namespace RangefinderScale
             string leftImageFilePath = args[0];
             string rightImageFilePath = args[1];
 
-            int dpm = 4096;
-            float imageWidth = 0.125f;
-            float imageHeight = 0.0625f;
+            int dpm = 8192;
+            float imageWidth = 0.05f;
+            float imageHeight = 0.05f;
             Size imageSizeP = new Size((int)(imageWidth * dpm), (int)(imageHeight * dpm));
 
-            float scaleDistance = 1.0f;
+            float scaleDistance = 0.5f;
             float eyeBase = 0.07f;
 
             float minDistance = 1.0f;
@@ -34,7 +34,7 @@ namespace RangefinderScale
             Bitmap bmpRight = new Bitmap(imageSizeP.Width, imageSizeP.Height, PixelFormat.Format32bppPArgb);
             Bitmap bmpLeft = new Bitmap(imageSizeP.Width, imageSizeP.Height, PixelFormat.Format32bppPArgb);
 
-            Brush backBrush = new SolidBrush(Color.FromArgb(10, Color.Black));
+            Brush backBrush = new SolidBrush(Color.FromArgb(255, Color.Black));
             Brush foreBrush = new SolidBrush(Color.White);
 
 
@@ -44,9 +44,13 @@ namespace RangefinderScale
                 {
                     grpRight.SmoothingMode = SmoothingMode.HighQuality;
                     grpRight.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                    grpRight.CompositingQuality = CompositingQuality.HighQuality;
+                    grpRight.InterpolationMode = InterpolationMode.High;
 
                     grpLeft.SmoothingMode = SmoothingMode.HighQuality;
                     grpLeft.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                    grpLeft.CompositingQuality = CompositingQuality.HighQuality;
+                    grpLeft.InterpolationMode = InterpolationMode.High;
 
                     for (float dist = minDistance; dist <= maxDistance; dist += step)
                     {
@@ -58,16 +62,14 @@ namespace RangefinderScale
                         float scaleValue = GetScaleValue(dist, scaleDistance, eyeBase);
                         float scaleValueP = ToFPixels(scaleValue, dpm);
 
-                        PointF leftMarkPos = new PointF(0.5f * imageSizeP.Width - scaleValueP, markImageY);
-                        PointF rightMarkPos = new PointF(0.5f * imageSizeP.Width + scaleValueP, markImageY);
+                        PointF leftMarkPos = new PointF(0.5f * imageSizeP.Width + scaleValueP, markImageY);
+                        PointF rightMarkPos = new PointF(0.5f * imageSizeP.Width - scaleValueP, markImageY);
 
-                        DrawMark(leftMarkPos, 6.0f, backBrush, grpLeft);
-                        DrawMark(leftMarkPos, 3.0f, foreBrush, grpLeft);
-                        DrawLabel(leftMarkPos, dist.ToString("0"), 10.0f, foreBrush, backBrush, grpLeft);
+                        DrawMark(leftMarkPos, 3.0f, foreBrush, backBrush, grpLeft);
+                        DrawLabel(leftMarkPos, dist.ToString("0"), 12.0f, foreBrush, backBrush, grpLeft);
 
-                        DrawMark(rightMarkPos, 6.0f, backBrush, grpRight);
-                        DrawMark(rightMarkPos, 3.0f, foreBrush, grpRight);
-                        DrawLabel(rightMarkPos, dist.ToString("0"), 10.0f, foreBrush, backBrush, grpRight);
+                        DrawMark(rightMarkPos, 3.0f, foreBrush, backBrush, grpRight);
+                        DrawLabel(rightMarkPos, dist.ToString("0"), 12.0f, foreBrush, backBrush, grpRight);
                     }
                 }
             }
@@ -76,37 +78,35 @@ namespace RangefinderScale
             bmpRight.Save(rightImageFilePath, ImageFormat.Png);
         }
 
-        static void DrawMark(PointF coords, float size, Brush brush, Graphics graphics)
+        static void DrawMark(PointF coords, float size, Brush foreBrush, Brush backBrush, Graphics graphics)
         {
             SizeF sizeF = new SizeF(size, size);
             SizeF halfSizeF = new SizeF(0.5f * size, 0.5f * size);
 
-            graphics.FillEllipse(brush, new RectangleF(coords - halfSizeF, sizeF));
+            GraphicsPath path = new GraphicsPath();
+            path.AddEllipse(new RectangleF(coords - halfSizeF, sizeF));
+
+            Pen pen = new Pen(backBrush, 3.0f);
+            graphics.DrawPath(pen, path);
+            graphics.FillPath(foreBrush, path);
         }
 
         static void DrawLabel(PointF coords, string label, float size, Brush foreBrush, Brush backBrush, Graphics graphics)
         {
-            //GraphicsPath
-
-            //using (PathGradientBrush brush = new PathGradientBrush(pathShadow))
-            //{
-            //    ColorBlend blend = new ColorBlend();
-            //    blend.Colors = new Color[] { Color.Transparent, Color.Black };
-            //    blend.Positions = new float[] { 0.0f, 1.0f };
-            //    brush.InterpolationColors = blend;
-            //    graph.FillPath(brush, pathShadow);
-            //}
 
             Font font = new Font(FontFamily.GenericSansSerif, size, FontStyle.Regular, GraphicsUnit.Pixel);
 
             SizeF sizeF = new SizeF(size, size);
             SizeF halfSizeF = new SizeF(0.5f * size, 0.5f * size);
 
-            PointF labelcoords = new PointF(coords.X + 4f, coords.Y - 0.7f * size);
+            PointF labelcoords = new PointF(coords.X + 4f, coords.Y - 0.6f * size);
 
-            SizeF labelSize = graphics.MeasureString(label, font, labelcoords, StringFormat.GenericDefault);
-            graphics.FillRectangle(backBrush, new RectangleF(labelcoords, labelSize));
-            graphics.DrawString(label, font, foreBrush, labelcoords, StringFormat.GenericDefault);
+            GraphicsPath path = new GraphicsPath();
+            path.AddString(label, FontFamily.GenericSansSerif, (int)FontStyle.Regular, size, labelcoords, StringFormat.GenericDefault);
+
+            Pen pen = new Pen(backBrush, 3.0f);
+            graphics.DrawPath(pen, path);
+            graphics.FillPath(foreBrush, path);
         }
 
         static float ToFPixels(float meters, int dotsPerMeter)
